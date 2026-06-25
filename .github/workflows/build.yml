@@ -1,4 +1,4 @@
-name: Build executables
+name: Build portable executables
 
 on:
   push:
@@ -14,7 +14,7 @@ on:
 
 jobs:
   build:
-    name: Build ${{ matrix.os }}
+    name: Build ${{ matrix.os }} ${{ matrix.variant }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -22,10 +22,22 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact: AirconektaToolFromNetSphere-linux
+            variant: full
+          - os: ubuntu-latest
+            artifact: AirconektaToolFromNetSphere-linux-light
+            variant: light
           - os: windows-latest
             artifact: AirconektaToolFromNetSphere-windows
+            variant: full
+          - os: windows-latest
+            artifact: AirconektaToolFromNetSphere-windows-light
+            variant: light
           - os: macos-latest
             artifact: AirconektaToolFromNetSphere-macos
+            variant: full
+          - os: macos-latest
+            artifact: AirconektaToolFromNetSphere-macos-light
+            variant: light
 
     steps:
       - name: Checkout
@@ -40,7 +52,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-tk libgtk-3-0
+          sudo apt-get install -y \
+            python3-tk python3-gi python3-gi-cairo \
+            libgtk-3-0 libgl1 libxkbcommon-x11-0 \
+            libgirepository-1.0-1 libcairo2 \
+            gir1.2-webkit2-4.1 gir1.2-gtk-3.0
 
       - name: Install Python dependencies
         run: |
@@ -51,10 +67,16 @@ jobs:
       - name: Build executable
         run: |
           if [ "${{ inputs.debug }}" == "true" ]; then
-            python build.py --debug
+            DEBUG_FLAG="--debug"
           else
-            python build.py
+            DEBUG_FLAG=""
           fi
+          if [ "${{ matrix.variant }}" == "light" ]; then
+            LIGHT_FLAG="--light"
+          else
+            LIGHT_FLAG=""
+          fi
+          python build.py $DEBUG_FLAG $LIGHT_FLAG
         shell: bash
 
       - name: List dist contents
@@ -63,17 +85,32 @@ jobs:
 
       - name: Rename artifact (Windows)
         if: runner.os == 'Windows'
-        run: mv dist/AirconektaToolFromNetSphere.exe dist/AirconektaToolFromNetSphere-windows.exe
+        run: |
+          if [ "${{ matrix.variant }}" == "light" ]; then
+            mv dist/AirconektaToolFromNetSphere-light.exe dist/${{ matrix.artifact }}.exe
+          else
+            mv dist/AirconektaToolFromNetSphere.exe dist/${{ matrix.artifact }}.exe
+          fi
         shell: bash
 
       - name: Rename artifact (macOS)
         if: runner.os == 'macOS'
-        run: mv dist/AirconektaToolFromNetSphere dist/AirconektaToolFromNetSphere-macos
+        run: |
+          if [ "${{ matrix.variant }}" == "light" ]; then
+            mv dist/AirconektaToolFromNetSphere-light dist/${{ matrix.artifact }}
+          else
+            mv dist/AirconektaToolFromNetSphere dist/${{ matrix.artifact }}
+          fi
         shell: bash
 
       - name: Rename artifact (Linux)
         if: runner.os == 'Linux'
-        run: mv dist/AirconektaToolFromNetSphere dist/AirconektaToolFromNetSphere-linux
+        run: |
+          if [ "${{ matrix.variant }}" == "light" ]; then
+            mv dist/AirconektaToolFromNetSphere-light dist/${{ matrix.artifact }}
+          else
+            mv dist/AirconektaToolFromNetSphere dist/${{ matrix.artifact }}
+          fi
         shell: bash
 
       - name: Upload artifact

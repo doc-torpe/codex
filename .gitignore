@@ -33,6 +33,17 @@ Thumbs.db
 # Archivos temporales del navegador integrado
 netsphere_webview_err.log
 netsphere_qt_err.log
+AirconektaTool_error.log
+
+# Ejecutables portables generados localmente
+AirconektaToolFromNetSphere
+AirconektaToolFromNetSphere-linux
+AirconektaToolFromNetSphere-linux-light
+AirconektaToolFromNetSphere-macos
+AirconektaToolFromNetSphere-macos-light
+AirconektaToolFromNetSphere.exe
+AirconektaToolFromNetSphere-windows.exe
+AirconektaToolFromNetSphere-windows-light.exe
 
 # Directorio de extracción del exe original (no necesario en repo)
 extracted/

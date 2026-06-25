@@ -28,6 +28,18 @@ def _local_url() -> str:
     return f"{scheme}://127.0.0.1:{config.LOCAL_PORT}"
 
 
+def _subprocess_cmd(url: str) -> list[str]:
+    """Construye el comando para lanzar Qt WebEngine en un subproceso.
+
+    En un binario onefile de PyInstaller usamos el propio ejecutable con un
+    flag especial, porque sys.executable ya no es un intérprete Python capaz
+    de ejecutar scripts .py directamente.
+    """
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--qt-subprocess", url]
+    return [sys.executable, "-m", "netsphere_bridge.qt_subprocess", url]
+
+
 def open_qt_browser(url: Optional[str] = None) -> tuple[bool, str]:
     """Abre el dashboard en una ventana Qt WebEngine (subproceso).
 
@@ -37,7 +49,6 @@ def open_qt_browser(url: Optional[str] = None) -> tuple[bool, str]:
         return False, "PySide6 no está instalado."
 
     target = url or _local_url()
-    script = Path(__file__).with_name("qt_subprocess.py")
 
     stderr_file = Path(tempfile.gettempdir()) / "netsphere_qt_err.log"
     try:
@@ -45,9 +56,10 @@ def open_qt_browser(url: Optional[str] = None) -> tuple[bool, str]:
     except Exception:
         pass
 
+    cmd = _subprocess_cmd(target)
     try:
         proc = subprocess.Popen(
-            [sys.executable, str(script), target],
+            cmd,
             stdout=subprocess.DEVNULL,
             stderr=stderr_file.open("w", encoding="utf-8"),
             start_new_session=True,
