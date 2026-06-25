@@ -5,6 +5,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Build with console visible (for debugging Windows)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -34,7 +40,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-tk libgtk-3-0 libwebkit2gtk-4.1-0
+          sudo apt-get install -y python3-tk libgtk-3-0
 
       - name: Install Python dependencies
         run: |
@@ -43,25 +49,31 @@ jobs:
           pip install -e ".[build]"
 
       - name: Build executable
-        run: python build.py
+        run: |
+          if [ "${{ inputs.debug }}" == "true" ]; then
+            python build.py --debug
+          else
+            python build.py
+          fi
+        shell: bash
+
+      - name: List dist contents
+        run: ls -lh dist/
         shell: bash
 
       - name: Rename artifact (Windows)
         if: runner.os == 'Windows'
-        run: |
-          mv dist/AirconektaToolFromNetSphere.exe dist/AirconektaToolFromNetSphere-windows.exe
+        run: mv dist/AirconektaToolFromNetSphere.exe dist/AirconektaToolFromNetSphere-windows.exe
         shell: bash
 
       - name: Rename artifact (macOS)
         if: runner.os == 'macOS'
-        run: |
-          mv dist/AirconektaToolFromNetSphere dist/AirconektaToolFromNetSphere-macos
+        run: mv dist/AirconektaToolFromNetSphere dist/AirconektaToolFromNetSphere-macos
         shell: bash
 
       - name: Rename artifact (Linux)
         if: runner.os == 'Linux'
-        run: |
-          mv dist/AirconektaToolFromNetSphere dist/AirconektaToolFromNetSphere-linux
+        run: mv dist/AirconektaToolFromNetSphere dist/AirconektaToolFromNetSphere-linux
         shell: bash
 
       - name: Upload artifact

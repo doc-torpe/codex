@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-"""Script de build para crear ejecutables con PyInstaller.
+"""Script de build para crear ejecutables standalone con PyInstaller.
 
-Genera un ejecutable standalone por sistema operativo:
+Genera un ejecutable por sistema operativo:
   - Windows: dist/AirconektaToolFromNetSphere.exe
-  - macOS:   dist/AirconektaToolFromNetSphere.app
+  - macOS:   dist/AirconektaToolFromNetSphere
   - Linux:   dist/AirconektaToolFromNetSphere
 
 Uso:
     python build.py
+    python build.py --debug       # modo consola para ver errores
 """
 
 from __future__ import annotations
 
-import os
+import argparse
 import platform
 import shutil
 import subprocess
@@ -39,29 +40,58 @@ def clean_dist() -> None:
         shutil.rmtree(build)
 
 
-def build() -> int:
+def build(debug: bool = False) -> int:
     clean_dist()
 
     plat = get_platform()
-    if plat == "windows":
-        exe_name = f"{APP_NAME}.exe"
-        console = False  # GUI app en Windows
-    elif plat == "macos":
-        exe_name = APP_NAME
-        console = False
-    elif plat == "linux":
-        exe_name = APP_NAME
-        console = True  # Linux puede mostrar logs útiles
-    else:
+    if plat not in ("windows", "macos", "linux"):
         print(f"Sistema no soportado: {plat}")
         return 1
 
-    # Incluir subprocess helpers del navegador integrado.
+    # En modo debug siempre mostramos consola para ver errores.
+    console = debug or plat == "linux"
+
+    src_dir = Path("src/netsphere_bridge")
     add_data = []
     for script in ["webview_subprocess.py", "qt_subprocess.py"]:
-        src = Path("src/netsphere_bridge") / script
+        src = src_dir / script
         if src.exists():
-            add_data.extend(["--add-data", f"{src}:netsphere_bridge"])
+            if plat == "windows":
+                add_data.extend(["--add-data", f"{src};netsphere_bridge"])
+            else:
+                add_data.extend(["--add-data", f"{src}:netsphere_bridge"])
+
+    hidden_imports = [
+        "netsphere_bridge",
+        "netsphere_bridge.app",
+        "netsphere_bridge.cli",
+        "netsphere_bridge.browser",
+        "netsphere_bridge.webview_browser",
+        "netsphere_bridge.qt_browser",
+        "netsphere_bridge.webview_subprocess",
+        "netsphere_bridge.qt_subprocess",
+        "tkinter",
+        "webview",
+        "webview.platforms.qt",
+        "PySide6",
+        "PySide6.QtCore",
+        "PySide6.QtGui",
+        "PySide6.QtWidgets",
+        "PySide6.QtWebEngineCore",
+        "PySide6.QtWebEngineWidgets",
+        "qtpy",
+        "paramiko",
+        "paramiko.transport",
+        "requests",
+        "aiohttp",
+        "cryptography",
+    ]
+
+    collect_args = [
+        "--collect-all", "PySide6",
+        "--collect-all", "webview",
+        "--collect-all", "qtpy",
+    ]
 
     cmd = [
         sys.executable,
@@ -73,36 +103,14 @@ def build() -> int:
         "--windowed" if not console else "--console",
         "--clean",
         "--noconfirm",
-        "--hidden-import",
-        "netsphere_bridge.app",
-        "--hidden-import",
-        "netsphere_bridge.cli",
-        "--hidden-import",
-        "netsphere_bridge.browser",
-        "--hidden-import",
-        "netsphere_bridge.webview_browser",
-        "--hidden-import",
-        "netsphere_bridge.qt_browser",
-        "--hidden-import",
-        "netsphere_bridge.webview_subprocess",
-        "--hidden-import",
-        "netsphere_bridge.qt_subprocess",
-        "--hidden-import",
-        "tkinter",
-        "--hidden-import",
-        "webview",
-        "--hidden-import",
-        "webview.platforms.qt",
-        "--hidden-import",
-        "PySide6",
-        "--hidden-import",
-        "PySide6.QtWebEngineWidgets",
+        "--paths", "src",
+        *collect_args,
+        *[arg for name in hidden_imports for arg in ("--hidden-import", name)],
         *add_data,
         ENTRY_POINT,
     ]
 
-    print(f"Building for {plat}...")
-    print(" ".join(cmd))
+    print(f"Building for {plat} (debug={debug})...")
     result = subprocess.run(cmd)
 
     if result.returncode != 0:
@@ -116,4 +124,7 @@ def build() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(build())
+    parser = argparse.ArgumentParser(description="Build Airconekta Tool executable")
+    parser.add_argument("--debug", action="store_true", help="Build with console for debugging")
+    args = parser.parse_args()
+    raise SystemExit(build(debug=args.debug))
