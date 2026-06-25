@@ -1,0 +1,48 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.spec
+
+# PyInstaller
+*.manifest
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archivos temporales del navegador integrado
+netsphere_webview_err.log
+netsphere_qt_err.log
+
+# Directorio de extracción del exe original (no necesario en repo)
+extracted/
+pyz_modules/
+*.pyc
+*.dis
+*.skeleton.py
+*.rules.py
+*.recovered.py
+
+# Pero sí incluir el exe original como referencia? Opcional.
+# NetSphere_Bridge.exe
+NetSphere_Bridge.exe

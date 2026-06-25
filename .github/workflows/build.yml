@@ -1,0 +1,88 @@
+name: Build executables
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: AirconektaToolFromNetSphere-linux
+          - os: windows-latest
+            artifact: AirconektaToolFromNetSphere-windows
+          - os: macos-latest
+            artifact: AirconektaToolFromNetSphere-macos
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk libgtk-3-0 libwebkit2gtk-4.1-0
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e ".[build]"
+
+      - name: Build executable
+        run: python build.py
+        shell: bash
+
+      - name: Rename artifact (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mv dist/AirconektaToolFromNetSphere.exe dist/AirconektaToolFromNetSphere-windows.exe
+        shell: bash
+
+      - name: Rename artifact (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mv dist/AirconektaToolFromNetSphere dist/AirconektaToolFromNetSphere-macos
+        shell: bash
+
+      - name: Rename artifact (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mv dist/AirconektaToolFromNetSphere dist/AirconektaToolFromNetSphere-linux
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/AirconektaToolFromNetSphere-*
+
+  release:
+    name: Create release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
